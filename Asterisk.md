@@ -398,10 +398,33 @@ sudo apt-get install unixodbc
 ```
 
 Настройка сетевого экрана.
-
+Разрешение TCP и UDP для порта 5060:
 ```bash
-sudo ufw allow proto tcp from any to any port 5060,5061
+sudo ufw allow 5060/tcp
+sudo ufw allow 5060/udp
 ```
+Разрешение TCP и UDP для порта 5061:
+```bash
+sudo ufw allow 5061/tcp
+sudo ufw allow 5061/udp
+```
+Разрешение UDP для порта 4569:
+```bash
+sudo ufw allow 4569/udp
+```
+Разрешение диапазона портов 10000-20000 UDP:
+```bash
+sudo ufw allow 10000:20000/udp
+```
+Разрешение на подключение по порту 22 (SSH):
+```bash
+sudo ufw allow 22
+```
+Запуск сетевого экрана:
+```bash
+sudo ufw enable
+```
+
 ## Раздел 2. Сборка и начальная конфигурация сервера VoIP телефонии Asterisk
 ### 2.1 Установка Asterisk
 Asterisk устанавливается путем сборки из исходного кода. Полная установка проходит в 3 этапа:
