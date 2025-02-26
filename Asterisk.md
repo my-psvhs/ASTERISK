@@ -384,7 +384,7 @@ sudo apt-get upgrade
 
 Установите пакет wget для скачивания файлов по URL ссылке, клиенты систем управления версиями git и svn, компиляторы gcc gcc -c++ и дополнительные пакеты для сборки проектов из исходного кода по Makefile:
 ```bash
-sudo yum install wget git gcc gcc-c++ svn wget cmake make automake autoconf pkgconfig graphviz
+sudo apt install wget git gcc gcc-c++ svn cmake make automake autoconf pkgconfig graphviz
 ```
 ```bash
 sudo apt -y install curl libnewt-dev libssl-dev libncurses5-dev subversion libsqlite3-dev build-essential libjansson-dev libxml2-dev uuid-dev
@@ -521,7 +521,7 @@ sudo make config
 
 Внизу окна редактора приводится список команд для работы
 
- ![picture](./image/nano.PNG)
+ ![picture](/image/nano.PNG)
 
 </details>
 
@@ -1102,7 +1102,7 @@ sudo asterisk -rx 'iax2 show registry'
 
 В полученном выводе State должно быть Registered (т.е. локальный Asterisk успешно зарегистрировался на удаленном). Состояние Rejected означает, что в регистрации было отказано, следует выяснить и устранить причину (Рисунок 3.5).
 
-![picture](/image/Снимок35.png)
+![picture](./image/Снимок35.png)
 
 *Рис 3.5. Появление ошибки отказа в регистрации*
 
@@ -1412,19 +1412,19 @@ sudo systemctl restart sshd
 
 Загрузите на свой компьютер файл id_ed25519 из .ssh/. Формат файлов ключей, используемый OpenSSH, не подходит для PuTTY, поэтому сначала полученный приватный ключ придется сконвертировать в используемый PuTTY формат ppk. Запустите программу **PuTTYgen** (необходимо предварительно установить), выберите Conversions – Import key, укажите файл с приватным ключом, нажмите Save private key, согласитесь на сохранение приватного ключа без парольной фразы, укажите размещение файла с приватным ключом в формате ppk, который будет использовать PuTTy для аутентификации (Рисунок 4.1).
 
-![picture](/image/keygen.PNG)
+![picture](./image/keygen.PNG)
 
 *Рис 4.1. Размещение файла с приватным ключом в формате ppk*
 
 Откройте новое окно PuTTY, слева в пункте Connections разверните подпункт SSH, в нем выберите подпункт Auth и в поле Private key for authentication укажите путь к сконвертированному файлу приватного ключа в формате ppk (Рисунок 4.2).
 
-![picture](/image/save_key.PNG)
+![picture](./image/save_key.PNG)
 
 *Рис 4.2. Указание пути к сконвертированному файлу приватного ключа в формате ppk.*
 
 Перейдите в пункт Session, введите IP адрес CentOS, укажите протокол SSH, в поле Saved Sessions укажите имя, под которым хотите сохранить это подключение, нажмите Save (Рисунок 4.3).
 
-![picture](/image/load_ssh.PNG)
+![picture](./image/load_ssh.PNG)
 
 *Рис 4.3. Настройка параметров подключения*
 
