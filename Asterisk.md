@@ -1143,7 +1143,7 @@ sudo asterisk -rx 'iax2 show peers'
 Status должен быть OK, а внизу указано, что есть 1 online (Рисунок 3.6).
 
 
-![picture](/image/Снимок36.png)
+![picture](/image/Снимок36.PNG)
 
 *Рис 3.5. Данные об успешной регистрации*
 
