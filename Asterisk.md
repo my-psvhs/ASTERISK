@@ -858,7 +858,7 @@ max_contacts=1
 Теперь проверим, что Asterisk готов принимать вызовы, приходящие по сети, для этого нужно убедиться, что прослушивается порт SIP – 5060. Получить статистику по открытым портам и соединения можно с помощью нескольких команд, одна из них – *ss:*
 
 ```
-ss –ulpn
+ss -ulpn
 ```
 
 ![picture](./image/ulpn.png)
@@ -1255,7 +1255,7 @@ mysql -u root -p
 Отобразить все созданные БД;
 
 ```
-*SHOW DATABASES;*
+SHOW DATABASES;
 ```
 
 <details>
@@ -1294,53 +1294,203 @@ CREATE TABLE table_name (
 
 
 **Записать в таблицу новую строку:**
-
->INSERT INTO table_name (column1, column2) VALUES (value1,value2);
+~~~
+INSERT INTO table_name (column1, column2) VALUES (value1,value2);
+~~~
 
 Обновить существующую(ие) строку(и), которые подпадают под условие(я):
 
->UPDATE table_name SET column1 = value1, column2 = value2, … WHERE condition1 AND condition2;
+~~~
+UPDATE table_name SET column1 = value1, column2 = value2, … WHERE condition1 AND condition2;
+~~~
 
 Выбрать все строки из таблицы:
 
->SELECT * FROM table_name;
+~~~
+SELECT * FROM table_name;
+~~~
 
 Удалить базу, таблицу, строку из таблицы:
 
->DROP DATABASE databasename;
+~~~
+DROP DATABASE databasename;
+~~~
 
->DROP TABLE table_name;
+~~~
+DROP TABLE table_name;
+~~~
 
->DELETE FROM table_name WHERE condition;
-
+~~~
+DELETE FROM table_name WHERE condition;
+~~~
 
 Далее приведены команды для создания БД и ее конфигурации на языке SQL, который традиционно используется для управления реляционными БД. Обратите внимание, запрос SQL ВСЕГДА заканчивается символом «;». Команды SQL выполняются в интерфейсе СУБД (вход mysql -u root -p ).
 
 Создайте БД с именем asteriskdb с символьной кодировкой UTF8 по умолчанию:
 
->CREATE DATABASE asteriskdb DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+~~~
+CREATE DATABASE asteriskdb DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+~~~
 
 На следующем шаге создайте пользователя СУБД, под которым Asterisk будет подключаться к СУБД, имя и пароль выберите самостоятельно.
 
->CREATE USER 'имя_пользователя'@'localhost' IDENTIFIED BY 'пароль';
+~~~
+CREATE USER 'имя_пользователя'@'localhost' IDENTIFIED BY 'пароль';
+~~~
 
 Выдайте права полного доступа на базу asteriskdb созданному на предыдущем шаге пользователю, обновите действующие права.
 
->GRANT ALL PRIVILEGES ON asteriskdb.* TO 'имя_пользователя'@'localhost';
+~~~
+GRANT ALL PRIVILEGES ON asteriskdb.* TO 'имя_пользователя'@'localhost';
+~~~
 
->FLUSH PRIVILEGES;
-
+~~~
+FLUSH PRIVILEGES;
+~~~
 
 Выберите базу для работы (по умолчанию после входа в СУБД база не выбрана):
 
+~~~
 >USE asteriskdb;
+~~~
 
 Создайте в выбранной базе таблицы, необходимые Asterisk для хранения своих данных с помощью готовых SQL-скриптов.
 
->source ~/asterisk-*/contrib/realtime/mysql/mysql_config.sql;
+~~~
+>source ~/asterisk-18.24.3/contrib/realtime/mysql/mysql_config.sql;
+~~~
 
 *Если СУБД возвращает ошибку, убедитесь, что путь до файла существует, проверьте, что версия установленного Asterisk правильная, замените ~ на /home/USERNAME где USERNAME - имя вашего пользователя Ubuntu.*
 
+### 3.6. Сборка и установка коннектора ODBC
+
+Коннектор Open Database Connectivity предоставляет API, с помощью которого сторонние сервисы (Asterisk в данном случае) могут получить доступ к БД.
+
+
+Для работы коннектора требуются пакеты unixODBC unixODBC-devel, они были установлены во время выполнения предыдущей части работы среди зависимостей Asterisk.
+
+Требуется установка пакета cmake.
+
+~~~
+sudo apt-get install cmake
+~~~
+
+Клонировать репозиторий с исходным кодом в текущую директорию и перейти в него:
+
+```
+cd ~
+git clone https://github.com/MariaDB/mariadb-connector-odbc.git
+cd mariadb-connector-odbc
+```
+Инициализация и обновление вложенных репозиториев:
+
+```
+git submodule init && git submodule update
+```
+
+Инициализация и обновление вложенных репозиториев:
+
+```
+git submodule init && git submodule update
+```
+Конфигурация параметров компиляции:
+
+```
+cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCONC_WITH_UNIT_TESTS=Off -DWITH_OPENSSL=true -DCMAKE_INSTALL_PREFIX=/usr
+```
+
+Конец вывода в терминал в случае успешного завершения сборки выглядит так (Рисунок 3.7).
+
+![picture](/image/Снимок38.PNG)
+
+*Рис 3.7. Успешное завершение собрки*
+
+Сборка и установка:
+
+```
+make
+sudo make install
+```
+В  файл /etc/odbcinst.ini добавьте описание нового драйвера подключения к СУБД (если уже существует с именем [MariaDB], приведите к представленному ниже виду):
+```
+[ODBC Drivers]
+MariaDB=Installed
+
+[MariaDB]
+Description=MariaDB Connector/ODBC
+Driver=/usr/lib/mariadb/libmaodbc.so
+UsageCount=1
+```
+
+В файл /etc/odbc.ini добавьте параметры подключения к базе:
+
+```
+[Asterisk-odbc]
+Description=MariaDB connection to 'asteriskdb' database
+driver=MariaDB
+server=localhost
+database=asteriskdb
+Port=3306
+Socket=/run/mysqld/mysqld.sock
+option=3
+Charset=utf8
+```
+
+Проверить, какие драйверы зарегистрированы (если при вводе команды ничего нет, то ошибка в файле /etc/odbcinst.ini):
+```
+odbcinst -q -d
+```
+![picture](/image/-q-d.png)
+
+*Рис 3.8. Пример вывода команды odbcinst -q -d*
+
+Проверить, какие источники данных зарегистрированы (если при вводе команды ничего нет, то ошибка в файле /etc/odbcinst.ini):
+```
+odbcinst -q -s
+```
+![picture](/image/-q-s.png)
+
+*Рис 3.9. Пример вывода команды odbcinst -q -s*
+
+Проверка работоспособности коннектора (подключение к базе asteriskdb от имени созданного для Asterisk пользователя СУБД) (Рисунок 3.9).
+
+```
+isql -v Asterisk-odbc имя_пользователя пароль
+```
+![picture](/image/Снимок39.PNG)
+
+*Рис 3.10. Проверка работоспособности коннектора*
+
+В начало (перед строкой [asterisk]) файла */etc/asterisk/res_odbc.conf* добавьте конфигурацию для ODBC коннектора:
+
+***
+```
+[asteriskdb]
+enabled => yes
+dsn => Asterisk-odbc
+username => имя_пользователя
+password => пароль
+pre-connect => yes
+```
+***
+
+**Перезапустите службу Asterisk:**
+
+```
+sudo systemctl restart asterisk
+```
+
+**Проверка состояния подключения Asterisk к БД (Рисунок 3.10):**
+
+```
+sudo asterisk -rx 'odbc show'
+```
+
+![picture](/image/Снимок310.PNG)
+
+*Рис 3.11. Проверка состояния подключения Asterisk к БД*
+
+### 3.7. Перенос конфигурации PJSIP в БД.
 
 ### WORK IN PROGRESS
 
