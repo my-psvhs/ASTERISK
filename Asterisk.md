@@ -1971,10 +1971,104 @@ Fail2ban – утилита, отслеживающая в логах разны
 
 Установите пакет:
 ```
-sudo yum install fail2ban
+sudo apt install fail2ban
+```
+Базовая настройка параметров блокирования содержится в файле */etc/fail2ban/jail.d/00-firewalld.conf:*
+```ini
+[DEFAULT]
+maxretry = 4
+findtime = 10m
+bantime = 1m
+banaction= firewallcmd-ipset[actiontype=<multiport>],
 ```
 
-## WORK IN PROGRESS
+где:
+-	maxretry – количество событий, которые могут произойти до срабатывания триггера (наложение бана);
+-	findtime – время в секундах, в течение которого подсчитывается количество событий;
+-	bantime – время, на которое будет заблокирован IP-адрес;
+-	banaction – действия, которое будет выполняться в случае срабатывания триггера.
+
+
+Для каждого сервиса обычно создается отдельная конфигурация в отдельном файле:
+
+
+**Фильры в Fail2Ban**
+
+Фильтры – это ключевой компонент Fail2Ban, определяющий, какие строки в логах считаются подозрительными и подлежат отслеживанию. Фильтры представляют собой файлы с регулярными выражениями, которые описывают формат записей в логах, указывающих на неудачные попытки входа или другие нежелательные действия. Они хранятся в каталоге */etc/fail2ban/filter.d/* и обычно называются по имени сервиса (например, sshd.conf, asterisk.conf).
+Фильтры позволяют Fail2Ban точно определять, какие события в логах являются атаками. Например, для SSH фильтр ищет строки вида Failed password for ..., а для phpMyAdmin – запросы с кодами 401 или 403.
+Без фильтров Fail2Ban не сможет понять, какие записи в логах нужно анализировать, и не сможет блокировать злоумышленников.
+Фильтр содержит секцию ``[Definition]`` с параметром ``failregex``, в котором задаются регулярные выражения для поиска подозрительных строк. Например:
+
+```ini
+[Definition]
+failregex = ^<HOST> - .* "(GET|POST) /phpmyadmin/.* HTTP.*" (401|403) .*
+```
+В этом выражении ``<HOST>`` соответствует IP-адресу, который будет заблокирован при обнаружении совпадения. Параметр ``ignoreregex`` (опционально) позволяет игнорировать определённые строки, чтобы избежать ложных срабатываний.
+
+В директории /etc/fail2ban/filter.d/ создайте файл nginx-phpmyadmin.conf со следующим содержимым:
+
+```ini
+[Definition]
+failregex = ^<HOST> - .* "(GET|POST) /phpmyadmin/.*(error=1|login_failed|access_denied).* HTTP.*" .*
+            ^<HOST> - .* "(GET|POST) /phpmyadmin/.* HTTP.*" (401|403) .*
+ignoreregex =
+```
+Это простой фильтр, предназначенный для обнаружения неудачных попыток входа в phpMyAdmin, либо через внутреннюю форму (параметры ``error=1``, ``login_failed``, ``access_denied``), либо через HTTP-аутентификацию (коды ``401``, ``403``).
+
+Далее, можно переидти к конфигурации Fail2Ban для отдельных сервисов.
+
+В директории /etc/fail2ban/jail.d/ создайте файлы *asterisk.conf* *phpmyadmin.conf*  *ssh.conf*
+
+
+*/etc/fail2ban/jail.d/ssh.conf:*
+```ini
+[ssh]
+enabled = true
+port = 30000
+filter = sshd
+logpath = /var/log/auth.log
+```
+*/etc/fail2ban/jail.d/asterisk.conf*
+```ini
+[asterisk]
+enabled = true
+port = 5060,5061
+protocol = all
+filter = asterisk
+action = ufw[name=asterisk, port="5060,5061", protocol=all]
+logpath = /var/log/asterisk/messages
+
+```
+
+/etc/fail2ban/jail.d/phpmyadmin.conf
+```ini
+[phpmyadmin]
+enabled = true
+filter = nginx-phpmyadmin
+port = http,https
+action = ufw[name=phpmyadmin, port="http,https", protocol=tcp]
+logpath = /var/log/nginx/access.log
+
+[nginx-http-auth]
+enabled = true
+filter = nginx-http-auth
+action = ufw[name=nginx, port="http,https", protocol=tcp]
+logpath = /var/log/nginx/error.log
+```
+
+**Просмотр настроенных правил:**
+```
+fail2ban-client status
+```
+**и заблокированных IP:**
+```
+fail2ban-client status ssh
+```
+**Пример.** Удалить из списка заблокированных клиентов для сервиса asterisk все адреса из подсети 192.168.0.0/16:
+```
+sudo fail2ban-client set asterisk unbanip 192.168.*
+```
+
 
 ### 4.4. Настройка аутентификации SSH по ключу
 
