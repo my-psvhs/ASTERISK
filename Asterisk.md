@@ -2376,10 +2376,7 @@ upload_max_filesize = 2M
 ```
 display_errors = Off
 ```
-Включаем Safe Mode
-```
-safe_mode = On
-```
+
 Включаем SQL Safe Mode
 ```
 sql.safe_mode = On
