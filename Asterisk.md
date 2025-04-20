@@ -2400,7 +2400,7 @@ sudo chmod 600 /etc/asterisk/keys/*
 ```
 
 
-Добавьте новую секцию tls-transport в начало файла /etc/asterisk.pjsip.conf (вместо существующей **udp-transport**)
+Добавьте новую секцию tls-transport в начало файла /etc/asterisk.pjsip.conf
 
 ```
 [transport-tls]
