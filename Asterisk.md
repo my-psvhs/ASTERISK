@@ -2342,6 +2342,115 @@ auth_basic_user_file
 
 ### 4.8. Защита соединений SIP RTP для Asterisk
 
+Протоколы SIP и RTP передают все данные в открытом виде, как Вы могли сами убедиться, анализируя их сообщения в Wireshark, для защиты передаваемых данных были созданы протокол Secure SIP (SIPS) для защиты сигнального трафика и протоколы Secure RTP (SRTP) и Z RTP (ZRTP) для защиты медиа трафика.  Аналогично протоколу HTTPS, протоколам SIPS SRTP для безопасной передачи c шифрованием данных сигнального и медиа трафика также требуется сертификат.
+
+Для хранения ключей asterisk будет создана директория:
+
+```
+sudo mkdir -p /etc/asterisk/keys
+
+cd /etc/asterisk/keys
+
+umask 277
+```
+
+Сгенерируйте корневой сертификат
+
+```
+openssl genrsa -out ca.key 2048
+
+openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
+  -subj "/C=RU/ST=Moscow/L=Zelenograd/O=MIET/OU=TCS/CN=My-CA" \
+  -out ca.crt
+```
+Сгенерируйте ключ и сертификат для сервера Asterisk.
+
+```
+openssl genrsa -out asterisk.key 2048
+
+openssl req -new -key asterisk.key \
+  -subj "/C=RU/ST=Moscow/L=Zelenograd/O=MIET/OU=TCS/CN=pbx.example.com" \
+  -out asterisk.csr
+
+openssl x509 -req -in asterisk.csr -CA ca.crt -CAkey ca.key \
+  -CAcreateserial -out asterisk.crt -days 365 -sha256
+```
+
+Сгенерируйте ключ и сертификат для SIP-клиента с номером XXXX (подставьте существующий в Вашей конфигурации номер), он будет подписан не корневым сертификатом, а сертификатом, выданным для Asterisk.
+
+```
+openssl genrsa -out clientXXXX.key 2048
+openssl req -new -key clientXXXX.key \
+  -subj "/C=RU/ST=Moscow/L=Zelenograd/O=MIET/OU=TCS/CN=XXXX" \
+  -out clientXXXX.csr
+openssl x509 -req -in clientXXXX.csr -CA asterisk.crt -CAkey asterisk.key \
+  -CAcreateserial -out clientXXXX.crt -days 365 -sha256
+```
+
+### Задание. 
+
+#### Сгенерируйте таким образом сертификат для каждого клиента.
+
+
+Установите владельца для директории и права
+
+```
+sudo chown -R asterisk:asterisk /etc/asterisk/keys
+sudo chmod 600 /etc/asterisk/keys/*
+```
+
+
+Добавьте новую секцию tls-transport в начало файла /etc/asterisk.pjsip.conf (вместо существующей **udp-transport**)
+
+```
+[transport-tls]
+
+type=transport
+
+protocol=tls
+
+bind=0.0.0.0:5061
+
+cert_file=/etc/asterisk/keys/asterisk.crt
+
+priv_key_file=/etc/asterisk/keys/asterisk.key
+
+method=sslv23
+```
+
+Для возможности клиентам использовать SIPS и SRTP, необходимо внести изменения в конфигурацию PJSIP. Для каждого клиента, описанного в таблице ps_endpoints БД asteriskdb значение параметра transport, измените на tls-transport, добавьте параметры со следующими значениями/
+
+```
+media_encryption=sdes
+
+dtls_verify=fingerprint
+
+dtls_cert_file=/etc/asterisk/keys/clientXXXX.crt
+
+dtls_private_key=/etc/asterisk/keys/clientXXXX.key
+
+dtls_setup=actpass
+
+dtls_rekey=0
+```
+
+Перезапустите службу Asterisk для применения настроек нового транспорта.
+
+Для проверки работоспособности осталось сконфигурировать клиент. Для установления защищенного соединения клиенту потребуется сертификат. С помощью WinSCP перенесите на хостовой компьютер сертификат, сгенерированный для клиента.
+
+<details>
+<summary>НЮАНСЫ</summary>
+Также будут проблемы с копирование через winscp (у вас не будет прав). Поэтому предварительно скопируйте сертификаты в отдельную директорию и дайте полные права.
+
+PhonerLite требует сертификат  расширении pem, поэтому требуется предварительно конфертировать clientXXXX.crt в clientXXXX.pem (самостоятельно)
+</details>
+
+Запустите клиент PhonerLite, во вкладке Конфигурация, разделе Сеть смените порт на указанный в конфигурации PJSIP для TLS, протокол смените на TLS, в разделе Кодеки отметьте пункт SRTP, в разделе Сертификаты в поле Сертификат клиента укажите путь до клиентского сертификата, сохраните параметры. Убедитесь, что клиент зарегистрировался через TLS-соединение (внизу окна рядом с индикатором регистрации появится символ ключа с надписью TLS), совершите вызов, убедитесь, что голосовой трафик передается.
+
+![picture](./image/tls_pl.png)
+
+*Рис 4.10. Клиент авторизован с использованием TLS*
+
 ### 4.9. Настройка безопасности PHP
 
 В файле /etc/php/7.4/fpm/php.ini (путь к файлу может отличаться в зависимости от установленной версии php) найдите/добавьте следующие параметры :
